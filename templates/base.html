@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Chat app</title>
+		<link href="{{url_for('static', filename='css/bootstrap.min.css')}}"
+		      rel="stylesheet" 
+		      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" 
+		      crossorigin="anonymous"
+		/>
+	<body class="bg-dark text-light">
+		<div class="content">
+			{% block content %} {% endblock %}
+		</div>
+		<!-- below is the JS import for socketio.js -->
+		<script src="{{url_for('static', filename='js/socket.io.js')}}" 
+			integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" 
+			crossorigin="anonymous"
+		></script>
+		<!-- below is the JS import for bootstrap.bundle.min.js -->
+		<script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"
+			integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" 
+			crossorigin="anonymous"
+		></script>
+	</body>
+</html>
