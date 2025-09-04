@@ -1,19 +1,13 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row">
-	<p class="text-center display-5">MEETAPP</p>
-</div>
-<div class="row">
-	<form method="post">
-		<div class="row">
-			<div class="col-10">	
-				<input type="text" class="form-control" name="name" placeholder="Enter a name to join as"/>
-			</div>
-			<div class="col-2">	
-				<button type="submit" name="submit" class="btn btn-primary">CONTINUE</button>
-			</div>
-		</div>
-	</form>
+<form method="post">
+		<p class="text-center h1 fw-bold">MEETAPP</p>
+	<div class="form-floating mb-4 mt-4">
+		<input type="text" class="form-control" placeholder="ENTER A NAME TO JOIN AS" value ="{{name}}" name="name"/>
+		<label for="name">ENTER A NAME TO JOIN AS</label>
+	</div>
+	<button type="submit" class="btn btn-outline-primary btn-lg d-block mx-auto" name="submit">continue</button>
+</form>
 </div>
 {% endblock %}

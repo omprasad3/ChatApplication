@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<form method="post">
+	<!--TODO make it ask password when it's required -->
+	<p class="text-center h1 fw-bold">Create a Channel</p>
+  <div class="form-floating mb-3 mt-3">
+	<input type="text" name="channel-name" class="form-control" value="{{channel_name}}" placeholder="Enter the channel name"/>
+	<label for="channel-name">CHANNEL NAME</label>
+		</div>
+  <div class="form-floating mb-3 mt-3">
+	<input type="text" name="channel-description" class="form-control" value="{{channel_description}}" placeholder="Enter the channel description"/>
+	<label for="channel-description">CHANNEL DESCRIPTION</label>
+		</div>
+	
+	 <div class="dropdown">
+	  <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">PASSWORD PROTECTED?</button>
+	  <ul class="dropdown-menu">
+	    <li><a class="dropdown-item" href="#">Link 1</a></li>
+	    <li><a class="dropdown-item" href="#">Link 2</a></li>
+	    <li><a class="dropdown-item" href="#">Link 3</a></li>
+	  </ul>
+	</div> 
+	<button type="submit" class="btn btn-primary" name="create">CREATE</button>
+</form>
+{% endblock %}

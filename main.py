@@ -33,36 +33,25 @@ class MeetApp:
         @self.app.route("/", methods = ["GET", "POST"])
         def welcome_screen():
             #if the username is already set then redirect the user
-            print(session)
-            if "name" in session:
-                return redirect(url_for('home'))
-            elif request.method == "POST" and request.form.get("name"):
+            if request.method == "POST" and request.form.get("name"):
                 session['name'] = request.form.get("name")
-                return render_template('home.html', name = session["name"])
-            else:
-                return render_template('welcome.html')
+                return redirect(url_for('home'))
+            name = "" if "name" not in session else session["name"]
+            return render_template('welcome.html', name=name)
 
         @self.app.route("/home", methods = ['GET', 'POST'])
         def home():
+            #if not the name is present redirect to the welcome screen
+            if "name" not in session:
+                return redirect(url_for('welcome_screen'))
             #if request method is post
             if request.method == "POST":
-                if request.form.get("reset") != None:
-                    session.clear()
-                    return redirect(url_for('welcome_screen'))
-                code = request.form.get("code")
-                join = request.form.get("join", False)
-                create = request.form.get("create", False)
-                
-                if join != False and not code:
-                    return render_template("home.html", error="Please enter a room code", name=session['name'])
-
-                channel = code
-                if create != False:
-                    channel = self.generate_unique_code(4)
-                    self.channels[channel] = {"members": 0, "messages": []}
-                elif code not in self.channels:
-                    return render_template("home.html", error="Room does not exist", name=session['name'])
-
+                join = request.form.get("join")
+                create = request.form.get("create")
+                if join:
+                    return redirect(url_for('join'))
+                if create:
+                    return redirect(url_for('create'))
 
                 session["channel"] = channel 
                 return redirect(url_for("channel"))
@@ -72,12 +61,31 @@ class MeetApp:
 
         @self.app.route("/channel")
         def channel():
+            #if not the name is present redirect to the welcome screen
+            if "name" not in session:
+                return redirect(url_for('welcome_screen'))
             channel = session.get("channel")
             if channel is None or session.get("name") is None or channel not in self.channels:
                 return redirect(url_for("home"))
             return render_template("channel.html", code=channel)
 
-
+        @self.app.route('/join')
+        def join():
+            #if not the name is present redirect to the welcome screen
+            if "name" not in session:
+                return redirect(url_for('welcome_screen'))
+            #TODO:
+            return render_template("join_channel.html")
+            
+        @self.app.route('/create')
+        def create():
+            #if not the name is present redirect to the welcome screen
+            if "name" not in session:
+                return redirect(url_for('welcome_screen'))
+            #TODO:
+            return render_template("create_channel.html")
+ 
+           
         @self.socketio.on('message')
         def message(data):
             channel = session.get("channel")

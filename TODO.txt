@@ -1,0 +1,1 @@
+**make the basic frame of the website** - continue from create.html
