@@ -9,46 +9,43 @@
 		      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" 
 		      crossorigin="anonymous"
 		/>
-	</head>
-		<!--<body class="bg-dark text-light">-->
-	<body>
-		 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
-		  <div class="container-fluid">
-		    <a class="navbar-brand" href="javascript:void(0)">Logo</a>
-		    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mynavbar">
-		      <span class="navbar-toggler-icon"></span>
-		    </button>
-		    <div class="collapse navbar-collapse" id="mynavbar">
-		      <ul class="navbar-nav me-auto">
-			<li class="nav-item">
-			  <a class="nav-link" href="javascript:void(0)">Link</a>
-			</li>
-			<li class="nav-item">
-			  <a class="nav-link" href="javascript:void(0)">Link</a>
-			</li>
-			<li class="nav-item">
-			  <a class="nav-link" href="javascript:void(0)">Link</a>
-			</li>
-		      </ul>
-		      <form class="d-flex">
-			<input class="form-control me-2" type="text" placeholder="Search">
-			<button class="btn btn-primary" type="button">Search</button>
-		      </form>
-		    </div>
-		  </div>
-		</nav> 
-		<div class="container mt-3">
-			{% block content %} {% endblock %}
-		</div>
-		<!-- below is the JS import for socketio.js -->
-		<script src="{{url_for('static', filename='js/socket.io.js')}}" 
-			integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" 
-			crossorigin="anonymous"
-		></script>
 		<!-- below is the JS import for bootstrap.bundle.min.js -->
 		<script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"
 			integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" 
 			crossorigin="anonymous"
 		></script>
+		<!-- below is the JS import for socketio.js -->
+		<script src="{{url_for('static', filename='js/socket.io.js')}}" 
+			integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" 
+			crossorigin="anonymous"
+		></script>
+		<style>
+			.dark-mode {
+				--bs-body-bg: #121212;
+				--bs-body-color: #ffffff;
+				--bs-primary: #ffffff;
+				--bs-secondary: #6c757d;
+			}
+		</style>
+	</head>
+		<!--<body class="bg-dark text-light">-->
+	<body>
+		 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+		  <div class="container-fluid">
+		    <a class="navbar-brand" href="javascript:void(0)">MeetIRC</a>
+		  </div>
+		</nav> 
+		<div class="container mt-3">
+			{% block content %} {% endblock %}
+		</div>
+		<script>
+			const darkModeSwitch = document.getElementById("darkModeSwitch");
+			darkModeSwitch.addEventListener("change", toggleToDarkMode);
+			
+			function toggleToDarkMode()
+			{
+				document.body.classList.toggle("dark-mode", darkModeSwitch.checked);
+			}	
+		</script>
 	</body>
 </html>

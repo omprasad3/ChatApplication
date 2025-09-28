@@ -1,13 +1,44 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<form method="post">
-		<p class="text-center h1 fw-bold">MEETAPP</p>
+<form method="post" class="needs-validation" novalidate>
+	<label for="name" class="h3">Enter your name: </label>
 	<div class="form-floating mb-4 mt-4">
-		<input type="text" class="form-control" placeholder="ENTER A NAME TO JOIN AS" value ="{{name}}" name="name"/>
-		<label for="name">ENTER A NAME TO JOIN AS</label>
+			<input type="text" class="form-control" id="name" width="4" placeholder="NAME" value ="{{username}}" name="name" required/>
+			    <div class="invalid-feedback">Please fill out this field.</div>
+			<label for="name">NAME</label>
 	</div>
-	<button type="submit" class="btn btn-outline-primary btn-lg d-block mx-auto" name="submit">continue</button>
+	<br>
+	<div class="form-floating mb-3 mt-3 d-flex justify-content-center gap-3"> <button type="submit" name="action" class="btn btn-outline-primary" value="join">Join a Channel</button>
+		<p class="h2">OR</p>
+		<button type="submit" name="action" class="btn btn-outline-primary" value="create" class="create-btn">Create a Channel</button>
+	</div>
+	{% if error %}
+	<div class="alert alert-danger alert-dismissible fade show">{{error}}</div>
+	{% endif %}
+
 </form>
 </div>
+<script>
+	//disabling form submissions if there are invalid fields
+	(function () {
+	  'use strict'
+
+	  // Fetch all the forms we want to apply custom Bootstrap validation styles to
+	  var forms = document.querySelectorAll('.needs-validation')
+
+	  // Loop over them and prevent submission
+	  Array.prototype.slice.call(forms)
+	    .forEach(function (form) {
+	      form.addEventListener('submit', function (event) {
+		if (!form.checkValidity()) {
+		  event.preventDefault()
+		  event.stopPropagation()
+		}
+
+		form.classList.add('was-validated')
+	      }, false)
+	    })
+	})()
+</script>
 {% endblock %}

@@ -1,17 +1,59 @@
-{% extends 'base.html' %}
-
-{% block content %}
-<div class="message-box">
-	<h2>Chat Room: {{code}}</h2>
-	<div class="messages" id="messages"></div>
-	<div class="inputs">
-		<input type="text" 
-			rows="3" 
-			placeholder="Message" 
-			name="message" 
-			id="message"
+<!DOCTYPE html>
+	<html>
+<header>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Chat app</title>
+		<link href="{{url_for('static', filename='css/bootstrap.min.css')}}"
+		      rel="stylesheet" 
+		      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" 
+		      crossorigin="anonymous"
 		/>
-		<button type="button" name="send" id="send-btn" onClick="sendMessage()">Send</button>
+<!-- below is the JS import for bootstrap.bundle.min.js -->
+		<script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"
+			integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" 
+			crossorigin="anonymous"
+		></script>
+		<!-- below is the JS import for socketio.js -->
+		<script src="{{url_for('static', filename='js/socket.io.js')}}" 
+			integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" 
+			crossorigin="anonymous"
+		></script>
+
+	<style>
+		body, html {
+			height: l00%;
+			margin: 0;
+		}
+		.messages{
+			flex:1;
+				overflow-y:auto;
+				padding: 1rem;
+		}
+		.chat-input-bar{
+				border-top: 1px solid #ddd;
+				padding: 0.5rem;
+		}
+	</style>
+		</header>
+		<body>
+<div class="chat-container container-fluid vh-100 flex-column d-flex">
+	<h2>Chat Room: {{code}}</h2>
+	<!-- message area -->
+	<div class="messages border border-primary" style="overflow-y:scroll;" id="messages">
+	{% for msg in messages %}
+		<div class="text"><span><strong>${msg[0]}</strong>: ${msg[1]}</span><span class="muted">${msg[2]}</span></div>
+	{% end for %}
+	</div>
+	<!-- bottom bar -->
+	<div class="chat-input-bar mb-3">
+		<form class="d-flex gap-2">
+			<button type="button" class="btn btn-outline-secondary">file</button>
+
+			<input type="text" name="message" id="message" class="form-control" placeholder="Write a message...">
+
+			<button type="button" name="send" id="send-btn" onClick="sendMessage()" class="btn btn-outline-primary">send</button>
+		</form>
 	</div>
 </div>
 <script type="text/javascript">
@@ -21,14 +63,6 @@
 	
 	const createMessage = (name, msg) => {
 		const content = `
-		<div class="text">
-			<span>
-				<strong>${name}</strong>: ${msg}
-			</span>
-			<span class="muted">
-				${new Date().toLocaleString()}
-			</span>
-		</div>
 		`
 		messages.innerHTML += content;
 	};
@@ -44,8 +78,9 @@
 	};
 </script>
 {% for msg in messages %}
-<script type="text/javascript">
+<script>
 	createMessage("{{msg.name}}", "{{msg.message}}");
 </script>
 {% endfor %}
-{% endblock %}
+		</body>
+	</html>

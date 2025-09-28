@@ -1,0 +1,3 @@
+CREATE TABLE IF NOT EXISTS user ( user_id VARCHAR(10) PRIMARY KEY, username TEXT NOT NULL, user_type TEXT NOT NULL, channel_id VARCHAR(5), FOREIGN KEY (channel_id) REFERENCES channel(channel_id));
+CREATE TABLE IF NOT EXISTS channel ( channel_id VARCHAR(5) PRIMARY KEY, channel_name TEXT NOT NULL, channel_description TEXT, password TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS message ( sender_id VARCHAR(10), channel_id VARCHAR(5), message_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME NOT NULL, content TEXT, FOREIGN KEY (sender_id) REFERENCES user(user_id), FOREIGN KEY (channel_id) REFERENCES channel(channel_id));

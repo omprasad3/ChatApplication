@@ -2,11 +2,11 @@
 
 {% block content %}
 <form method="post">
-	<p class="text-center h1 fw-bold">YOU WILL JOIN A CHANNEL AS '{{name}}'</p>
+	<p class="text-center h1 fw-bold">YOU WILL JOIN A CHANNEL AS '{{username}}'</p>
 	<div class="form-floating mb-3 mt-3 d-flex justify-content-center gap-3">
-		<button type="submit" name="join" class="btn btn-lg btn-outline-primary" value="join">Join a Channel</button>
+		<button type="submit" name="action" class="btn btn-outline-primary" value="join">Join a Channel</button>
 		<p class="h1 fw-bold">OR</p>
-		<button type="submit" name="create" class="btn btn-lg btn-outline-primary" value="create" class="create-btn">Create a Channel</button>
+		<button type="submit" name="action" class="btn btn-outline-primary" value="create" class="create-btn">Create a Channel</button>
 	</div>
 	{% if error %}
 	<div class="alert alert-danger alert-dismissible fade show">{{error}}</div>

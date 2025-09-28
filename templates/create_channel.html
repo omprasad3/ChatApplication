@@ -1,26 +1,57 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<form method="post">
-	<!--TODO make it ask password when it's required -->
-	<p class="text-center h1 fw-bold">Create a Channel</p>
+	<!-- TODO the above and make it ask password when it's required, for that show the modal -->
+	<form method="post" id="myForm" class="needs-validation" novalidate>
+		<p class="text-center h1">You Will Join A Channel As <b><i>'{{username}}'</i></b></p>
   <div class="form-floating mb-3 mt-3">
-	<input type="text" name="channel-name" class="form-control" value="{{channel_name}}" placeholder="Enter the channel name"/>
+	<input type="text" name="channel-name" class="form-control" value="{{channel_name}}" placeholder="Enter the channel name" required/>
+	    <div class="invalid-feedback">Please fill out this field.</div>
 	<label for="channel-name">CHANNEL NAME</label>
 		</div>
-  <div class="form-floating mb-3 mt-3">
-	<input type="text" name="channel-description" class="form-control" value="{{channel_description}}" placeholder="Enter the channel description"/>
-	<label for="channel-description">CHANNEL DESCRIPTION</label>
-		</div>
-	
-	 <div class="dropdown">
-	  <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">PASSWORD PROTECTED?</button>
-	  <ul class="dropdown-menu">
-	    <li><a class="dropdown-item" href="#">Link 1</a></li>
-	    <li><a class="dropdown-item" href="#">Link 2</a></li>
-	    <li><a class="dropdown-item" href="#">Link 3</a></li>
-	  </ul>
-	</div> 
-	<button type="submit" class="btn btn-primary" name="create">CREATE</button>
+ <div class="form-floating mb-3 mt-3">
+  <textarea class="form-control w-80 h-100" rows="4" id="channel-description" name="channel-description" placeholder=""></textarea>
+	    <div class="invalid-feedback">Please fill out this field.</div>
+  <label for="channel-description">CHANNEL DESCRIPTION</label>
+</div> 
+
+ <div class="input-group mb-3 mt-3">
+  <input type="text" class="form-control" placeholder="Enter Password" id="passwordInput" name="passwordInput" required>
+  <button class="btn btn-outline-secondary" type="button" id="togglePassword">SHOW</button>
+  </div>
+	<button type="submit" class="btn btn-outline-primary d-block mx-auto mt-4" value="create" name="action">CREATE</button>
 </form>
+<script>
+	// Example starter JavaScript for disabling form submissions if there are invalid fields
+	(function () {
+	  'use strict'
+
+	  // Fetch all the forms we want to apply custom Bootstrap validation styles to
+	  var forms = document.querySelectorAll('.needs-validation')
+
+	  // Loop over them and prevent submission
+	  Array.prototype.slice.call(forms)
+	    .forEach(function (form) {
+	      form.addEventListener('submit', function (event) {
+		if (!form.checkValidity()) {
+		  event.preventDefault()
+		  event.stopPropagation()
+		}
+
+		form.classList.add('was-validated')
+	      }, false)
+	    })
+	})()
+
+	const togglePassword = document.getElementById("togglePassword");
+	const passwordInput = document.getElementById("passwordInput");
+	togglePassword.addEventListener("click", togglePass);
+	function togglePass(){
+		const isPassword = passwordInput.type === "password";
+		passwordInput.type = isPassword ? "text" : "password";
+		togglePassword.textContent = isPassword ? "HIDE" : "SHOW";
+	}
+	togglePass();
+
+</script>
 {% endblock %}
