@@ -2,23 +2,69 @@
 
 {% block content %}
 <form method="post" class="needs-validation" novalidate>
-	<label for="name" class="h3">Enter your name: </label>
-	<div class="form-floating mb-4 mt-4">
-			<input type="text" class="form-control" id="name" width="4" placeholder="NAME" value ="{{username}}" name="name" required/>
-			    <div class="invalid-feedback">Please fill out this field.</div>
-			<label for="name">NAME</label>
+<div id="user-dropdown" class="dropdown">
+					<button id="user-settings" class="btn btn-outline-secondary dropdown-toggle ms-2 me-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">User Settings</button>
+  <ul class="dropdown-menu dropdown-menu-dark">
+    <li><a class="dropdown-item text-wrap" data-bs-toggle="modal" data-bs-target="#userUpdateModal">Update Profile</a></li>
+    <li><a class="dropdown-item" href="/delete_user">Delete User</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="/logout">Log Out</a></li>
+  </ul>
+</div>
+
+		<br>
+		<br>
+		<p class="text-center h1 mt-5 mp-2">Hello <i><b>{{username}}</b></i>
+	<div class="form-floating mb-3 mt-3 d-flex justify-content-center gap-3">
+		<p class="text-center h1 mt-5 mp-2">Do you want to 
+		<button type="submit" name="action" class="btn btn-outline-primary btn-lg" value="join">JOIN</button> or <button type="submit" name="action" class="btn btn-outline-primary btn-lg" value="create" class="create-btn">CREATE</button>
+		a Channel</p>
 	</div>
-	<br>
-	<div class="form-floating mb-3 mt-3 d-flex justify-content-center gap-3"> <button type="submit" name="action" class="btn btn-outline-primary" value="join">Join a Channel</button>
-		<p class="h2">OR</p>
-		<button type="submit" name="action" class="btn btn-outline-primary" value="create" class="create-btn">Create a Channel</button>
-	</div>
-	{% if error %}
-	<div class="alert alert-danger alert-dismissible fade show">{{error}}</div>
+	{% if info is defined %}
+		<div style="text-align:center;" id="infoAlert" class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+			<strong>{{info}}</strong>	
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+	{% endif %}
+	{% if error is defined %}
+		<div style="text-align:center;" id="errorAlert" class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+			<strong>{{error}}</strong>	
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
 	{% endif %}
 
 </form>
-</div>
+	<!-- user modal-->
+	<div class="modal fade" id="userUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+	  <div class="modal-dialog">
+	    <div class="modal-content">
+	      <div class="modal-header">
+		<h1 class="modal-title fs-5" id="staticBackdropLabel">Update User Settings</h1>
+		<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+	      </div>
+		<form method="post" action="/update_user" class="needs-validation" novalidate>
+	      <div class="modal-body">
+
+		  <div class="form-floating mb-3 mt-3">
+						<input type="text" class="form-control" name="usernameOfModal" value="{{username}}" required/>
+			    <div class="invalid-feedback">Please fill out this field.</div>
+			<label for="channel-ID">NEW USERNAME</label>
+		  </div>
+		 <div class="input-group mb-3 mt-3">
+		  <input type="text" class="form-control" placeholder="Enter New Password" name="passwordOfModal">
+		  <button class="btn btn-outline-dark" type="button" id="togglePasswordOfModal">SHOW</button>
+		  </div>
+
+	      </div>
+	      <div class="modal-footer">
+		<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+		<button type="submit" class="btn btn-primary" name="action" value="updateUser">Update ?</button>
+	      </div>
+	</form> 
+	    </div>
+	  </div>
+	</div>
+
 <script>
 	//disabling form submissions if there are invalid fields
 	(function () {
@@ -40,5 +86,22 @@
 	      }, false)
 	    })
 	})()
+
+	setTimeout(() => {
+		const alert = document.getElementById('errorAlert');
+		if(alert){
+			const bsAlert = new bootstrap.Alert(alert);
+			bsAlert.close();
+		}
+	}, 2000);
+
+	setTimeout(() => {
+		const alert = document.getElementById('infoAlert');
+		if(alert){
+			const bsAlert = new bootstrap.Alert(alert);
+			bsAlert.close();
+		}
+	}, 2000);
+
 </script>
 {% endblock %}

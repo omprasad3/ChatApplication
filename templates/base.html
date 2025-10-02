@@ -29,23 +29,13 @@
 		</style>
 	</head>
 		<!--<body class="bg-dark text-light">-->
-	<body>
-		 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
-		  <div class="container-fluid">
-		    <a class="navbar-brand" href="javascript:void(0)">MeetIRC</a>
-		  </div>
+	<body class="d-flex flex-column vh-100">
+		 <nav class="navbar justify-content-between navbar-expand navbar-dark bg-dark">
+			<a class="navbar-brand px-5 py-2 fw-bold" href="javascript:void(0)">MeetIRC</a>
+			<div class="d-flex">
+
+			</div>
 		</nav> 
-		<div class="container mt-3">
 			{% block content %} {% endblock %}
-		</div>
-		<script>
-			const darkModeSwitch = document.getElementById("darkModeSwitch");
-			darkModeSwitch.addEventListener("change", toggleToDarkMode);
-			
-			function toggleToDarkMode()
-			{
-				document.body.classList.toggle("dark-mode", darkModeSwitch.checked);
-			}	
-		</script>
 	</body>
 </html>

@@ -1,22 +1,31 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<form method="post" class="needs-validation" novalidate>
-	<p class="text-center h1 mt-5 mp-2">You Will Join A Channel As <b><i>'{{username}}'</i></b></p>
+
+	<form method="post" id="myForm" class="needs-validation" novalidate>
+		<p class="text-center h1 mt-5 mp-2"><b>Register or Login to Continue</b></p>
   <div class="form-floating mb-3 mt-3">
-	<input type="text" class="form-control" placeholder="Enter Channel ID" value ="{{channel_id}}" name="channel-ID" required/>
+	<input type="text" class="form-control" placeholder="Enter User Name" value ="{{username}}" name="username" required/>
 	    <div class="invalid-feedback">Please fill out this field.</div>
-	<label for="channel-ID">CHANNEL ID</label>
-  </div>
- <div class="input-group mb-3 mt-3">
-  <input type="text" class="form-control" placeholder="Enter Password" id="passwordInput" name="passwordInput">
+	<label for="username">USERNAME</label>
+  </div> <div class="input-group mb-3 mt-3">
+  <input type="text" class="form-control" placeholder="Enter Password" id="passwordInput" name="passwordInput" required>
   <button class="btn btn-outline-secondary" type="button" id="togglePassword">SHOW</button>
+	    <div class="invalid-feedback">Please fill out this field.</div>
   </div>
- <button type="submit" class="btn btn-outline-primary d-block mx-auto" name="join">JOIN</button>
-</form> 
+	<div class="d-flex justify-content-center mt-5">
+		<button class="btn btn-outline-primary me-5" name="action" value="register" type="submit">REGISTER</button> <button class="btn btn-outline-primary" name="action" value="login" type="submit">LOGIN</button>
+	</div>
+</form>
 {% if error is defined %}
 	<div style="text-align:center;" id="errorAlert" class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
 		<strong>{{error}}</strong>	
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+{% endif %}
+{% if success is defined %}
+	<div style="text-align:center;" id="successAlert" class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+		<strong>{{success}}</strong>	
 		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 	</div>
 {% endif %}
@@ -53,10 +62,19 @@
 	}
 	togglePass();
 
+	
 	setTimeout(() => {
-		const alert = document.getElementById('errorAlert');
-		if(alert){
-			const bsAlert = new bootstrap.Alert(alert);
+		const errorAlert = document.getElementById('errorAlert');
+		if(errorAlert){
+			const bsAlert = new bootstrap.Alert(errorAlert);
+			bsAlert.close();
+		}
+	}, 2000);
+
+	setTimeout(() => {
+		const successAlert = document.getElementById('successAlert');
+		if(successAlert){
+			const bsAlert = new bootstrap.Alert(successAlert);
 			bsAlert.close();
 		}
 	}, 2000);
@@ -64,5 +82,11 @@
 	//hide the channel button
 	const channel_button = document.getElementById('channel-settings');
 	channel_button.style.display = 'none';
+
+	//hide the user button
+	const user_button = document.getElementById('user-settings');
+	user_button.style.display = 'none';
+	
 </script>
+
 {% endblock %}

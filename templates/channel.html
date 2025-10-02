@@ -1,86 +1,149 @@
-<!DOCTYPE html>
-	<html>
-<header>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Chat app</title>
-		<link href="{{url_for('static', filename='css/bootstrap.min.css')}}"
-		      rel="stylesheet" 
-		      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" 
-		      crossorigin="anonymous"
-		/>
-<!-- below is the JS import for bootstrap.bundle.min.js -->
-		<script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"
-			integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" 
-			crossorigin="anonymous"
-		></script>
-		<!-- below is the JS import for socketio.js -->
-		<script src="{{url_for('static', filename='js/socket.io.js')}}" 
-			integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" 
-			crossorigin="anonymous"
-		></script>
-
-	<style>
-		body, html {
-			height: l00%;
-			margin: 0;
-		}
-		.messages{
-			flex:1;
-				overflow-y:auto;
-				padding: 1rem;
-		}
-		.chat-input-bar{
-				border-top: 1px solid #ddd;
-				padding: 0.5rem;
-		}
-	</style>
-		</header>
-		<body>
-<div class="chat-container container-fluid vh-100 flex-column d-flex">
-	<h2>Chat Room: {{code}}</h2>
-	<!-- message area -->
-	<div class="messages border border-primary" style="overflow-y:scroll;" id="messages">
+{% extends 'base.html' %}
+{% block content %}
+	<div id="channel-dropdown" class="dropdown">
+					<form id="channel-drop-form" method="post" action="/update_channel">
+					<button class="btn btn-outline-primary dropdown-toggle ms-2 me-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">Channel Settings</button>
+  <ul class="dropdown-menu dropdown-menu-dark">
+	{% if owner is defined %}
+							<li><a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#channelUpdateModal">Update Channel Settings</a></li>
+	{% endif %}
+    <li><a class="dropdown-item" href="/leave_channel">Leave Channel</a></li>
+	{% if owner is defined %}
+    <li><hr class="dropdown-divider-light"></li>
+    <li id="deleteChannelOption"><a class="dropdown-item" href="/delete_channel">Delete Channel</a></li>
+	{% endif %}
+  </ul>
+				</form>
+</div>
+<!-- message area -->
+	<div class="messages rounded-3 p-2 border border-primary border-top mb-2 mt-2 mx-1 shadow-sm" style="height:100%;overflow-y:scroll;" id="messages">
 	{% for msg in messages %}
-		<div class="text"><span><strong>${msg[0]}</strong>: ${msg[1]}</span><span class="muted">${msg[2]}</span></div>
-	{% end for %}
+		<div class="shadow-sm mt-1 mb-2 me-1 ms-1 border rounded-4">
+				<div class="d-flex mt-1 ms-2 me-4 justify-content-between">
+			<strong> {{msg[0]}} [{{msg[1]}}]:</strong> <small class="text-muted"> {{msg[3]}} </small>
+				</div>
+			<div class="me-4 ms-4 mb-1 text-break">{{msg[2]}}</div>
+		</div>
+	{% endfor %}
 	</div>
 	<!-- bottom bar -->
-	<div class="chat-input-bar mb-3">
-		<form class="d-flex gap-2">
-			<button type="button" class="btn btn-outline-secondary">file</button>
+		<form class="gap-1 mx-1">
+	<div class="input-group mb-3 mt-1 mx-1 me-2">
+			<button type="button" style="width:50px;height:50px;" class="btn btn-outline-secondary rounded-circle me-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="30" viewBox="0 0 448 512" fill="currentColor"><path d="M64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-320c0-35.3-28.7-64-64-64L64 32zm64 80a48 48 0 1 1 0 96 48 48 0 1 1 0-96zM272 224c8.4 0 16.1 4.4 20.5 11.5l88 144c4.5 7.4 4.7 16.7 .5 24.3S368.7 416 360 416L88 416c-8.9 0-17.2-5-21.3-12.9s-3.5-17.5 1.6-24.8l56-80c4.5-6.4 11.8-10.2 19.7-10.2s15.2 3.8 19.7 10.2l26.4 37.8 61.4-100.5c4.4-7.1 12.1-11.5 20.5-11.5z"/></svg></button>
 
-			<input type="text" name="message" id="message" class="form-control" placeholder="Write a message...">
+			<input type="text" name="messageBar" id="messageBar" class="form-control rounded-pill shadow-sm" placeholder="Write a message...">
 
-			<button type="button" name="send" id="send-btn" onClick="sendMessage()" class="btn btn-outline-primary">send</button>
-		</form>
+	<button style="width:50px;height:50px;" type="button" name="send" id="send-btn" class="btn btn-outline-primary me-1 ms-1 rounded-circle shadow-sm"><svg width="22" height="30" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M192 384L88.5 384C63.6 384 48.3 356.9 61.1 335.5L114 247.3C122.7 232.8 138.3 224 155.2 224L250.2 224C326.3 95.1 439.8 88.6 515.7 99.7C528.5 101.6 538.5 111.6 540.3 124.3C551.4 200.2 544.9 313.7 416 389.8L416 484.8C416 501.7 407.2 517.3 392.7 526L304.5 578.9C283.2 591.7 256 576.3 256 551.5L256 448C256 412.7 227.3 384 192 384L191.9 384zM464 224C464 197.5 442.5 176 416 176C389.5 176 368 197.5 368 224C368 250.5 389.5 272 416 272C442.5 272 464 250.5 464 224z"/></svg></button>
+
 	</div>
-</div>
-<script type="text/javascript">
-	var socketio = io();
+		</form>
+	<!-- channel modal-->
+	<div class="modal fade" id="channelUpdateModal" data-bs-backdrop="true" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+	  <div class="modal-dialog">
+	    <div class="modal-content">
+	      <div class="modal-header">
+		<h1 class="modal-title fs-5" id="staticBackdropLabel">Update Channel Settings</h1>
+		<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+	      </div>
+		<form method="post" action="/update_channel" class="needs-validation" novalidate>
+	      <div class="modal-body">
 
-	const messages = document.getElementById("messages");
-	
-	const createMessage = (name, msg) => {
-		const content = `
-		`
-		messages.innerHTML += content;
-	};
-	
-	socketio.on("message", (data) => {
-		createMessage(data.name, data.message);
-	})
-	const sendMessage = () => {
-		const message = document.getElementById("message");
-		if (message.value == "") return;
-		socketio.emit("message", {data: message.value});
-		message.value = "";
-	};
-</script>
-{% for msg in messages %}
-<script>
-	createMessage("{{msg.name}}", "{{msg.message}}");
-</script>
-{% endfor %}
-		</body>
-	</html>
+		  <div class="form-floating mb-3 mt-3">
+			<input type="text" class="form-control" name="channelNameOfModal" required/>
+			    <div class="invalid-feedback">Please fill out this field.</div>
+			<label for="channelNameOfModal">NEW CHANNEL NAME</label>
+		  </div>
+		 <div class="input-group mb-3 mt-3">
+		  <input type="text" class="form-control" placeholder="Enter New Password for the Channel" name="passwordOfChannelModal">
+		  <button class="btn btn-outline-dark" type="button" id="togglePasswordOfChannelModal">SHOW</button>
+		  </div>
+
+		 <div class="form-floating mb-3 mt-3">
+			<textarea class="form-control w-80 h-100" rows="4" id="channelDescription" name="channelDescription"></textarea>
+			    <div class="invalid-feedback">Please fill out this field.</div>
+		  <label for="channelDescription">CHANNEL DESCRIPTION</label>
+		</div> 
+
+	      </div>
+	      <div class="modal-footer">
+		<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+		<button type="submit" name="action" value="updateChannel" class="btn btn-primary">Update ?</button>
+	      </div>
+		</form>
+	    </div>
+	  </div>
+	</div>
+		<script>
+
+			const socket = io();
+			
+			const messages = document.getElementById("messages");
+
+			socket.on("new_message", (data) => {
+				if ( "message_type" in data && data["message_type"] == "broadcast" ) 
+				{
+					const messageDiv = document.createElement("div");
+					messageDiv.classList.add('shadow-sm', 'mt-1', 'mb-1', 'me-1', 'ms-1', 'border', 'rounded-4');
+
+					const mesg = document.createElement("div");
+					mesg.classList.add('me-4', 'ms-4', 'mb-1', 'text-break');
+					mesg.textContent = data['content'];
+
+					messageDiv.appendChild(mesg);
+
+					//add the message div to main container
+					messages.appendChild(messageDiv);	
+					//scroll to the bottom
+					messages.scrollTop = messages.scrollHeight;
+				}
+				else
+				{
+					addNewMessage(data.username, data.user_id, data.timestamp, data.content);
+				}
+			});
+
+			socket.on("exit_all", (data) => {
+				window.location.href = '{{ url_for('welcome_screen', info = "SORRY, the Channel you were in, is deleted") }}';	
+			});
+
+			function sendMessage() {
+				var message = document.getElementById("messageBar");
+				socket.emit("send_message", { data: message.value });
+				console.log(message.value);
+				message.value = "";
+			}
+			
+			document.getElementById('send-btn').addEventListener("click", sendMessage);
+			function addNewMessage(username, user_id, timestamp, content, message_type)
+			{
+				const messageDiv = document.createElement("div");
+				messageDiv.classList.add('shadow-sm', 'mt-1', 'mb-1', 'me-1', 'ms-1', 'border', 'rounded-4');
+
+				const mesBox = document.createElement("div");
+				mesBox.classList.add('d-flex', 'mt-1', 'ms-2', 'me-4', 'justify-content-between');
+
+				const strongID = document.createElement("strong");
+				strongID.textContent = username + " [ " + user_id + " ]:";
+
+				const smallID = document.createElement("small");
+				smallID.textContent = timestamp;
+
+				const mesg = document.createElement("div");
+				mesg.classList.add('me-4', 'ms-4', 'mb-1', 'text-break');
+				mesg.textContent = content;
+
+
+				mesBox.appendChild(strongID);
+				mesBox.appendChild(smallID);
+
+				messageDiv.appendChild(mesBox);
+				messageDiv.appendChild(mesg);
+
+				//add the message div to main container
+				messages.appendChild(messageDiv);	
+				//scroll to the bottom
+				messages.scrollTop = messages.scrollHeight;
+			}
+		</script>
+
+{% endblock %}

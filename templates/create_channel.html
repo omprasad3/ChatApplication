@@ -2,15 +2,23 @@
 
 {% block content %}
 	<!-- TODO the above and make it ask password when it's required, for that show the modal -->
-	<form method="post" id="myForm" class="needs-validation" novalidate>
-		<p class="text-center h1">You Will Join A Channel As <b><i>'{{username}}'</i></b></p>
+	<form method="post" class="needs-validation" novalidate>
+		<p class="text-center h2">You Will Join A Channel As <b><i>'{{username}}'</i></b></p>
+
+  <div class="form-floating mb-3 mt-3">
+	<input type="text" name="channel-id" class="form-control" value="{{channel_id}}" placeholder="Enter the channel ID of length 5" maxlength="5" required/>
+	    <div class="invalid-feedback">Please fill out this field.</div>
+	<label for="channel-id">CHANNEL ID</label>
+		</div>
+
   <div class="form-floating mb-3 mt-3">
 	<input type="text" name="channel-name" class="form-control" value="{{channel_name}}" placeholder="Enter the channel name" required/>
 	    <div class="invalid-feedback">Please fill out this field.</div>
 	<label for="channel-name">CHANNEL NAME</label>
 		</div>
+
  <div class="form-floating mb-3 mt-3">
-  <textarea class="form-control w-80 h-100" rows="4" id="channel-description" name="channel-description" placeholder=""></textarea>
+	<textarea class="form-control w-80 h-100" rows="4" id="channel-description" name="channel-description" placeholder="">{{channel_description}}</textarea>
 	    <div class="invalid-feedback">Please fill out this field.</div>
   <label for="channel-description">CHANNEL DESCRIPTION</label>
 </div> 
@@ -21,6 +29,13 @@
   </div>
 	<button type="submit" class="btn btn-outline-primary d-block mx-auto mt-4" value="create" name="action">CREATE</button>
 </form>
+{% if error is defined %}
+	<div style="text-align:center;" id="errorAlert" class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+		<strong>{{error}}</strong>	
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+{% endif %}
+
 <script>
 	// Example starter JavaScript for disabling form submissions if there are invalid fields
 	(function () {
@@ -53,5 +68,17 @@
 	}
 	togglePass();
 
+	
+	setTimeout(() => {
+		const alert = document.getElementById('errorAlert');
+		if(alert){
+			const bsAlert = new bootstrap.Alert(alert);
+			bsAlert.close();
+		}
+	}, 2000);
+
+	//hide the channel button
+	const channel_button = document.getElementById('channel-settings');
+	channel_button.style.display = 'none';
 </script>
 {% endblock %}
