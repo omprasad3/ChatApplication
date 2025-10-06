@@ -1,84 +1,37 @@
 {% extends 'base.html' %}
 
-{% block content %}
-	<!-- TODO the above and make it ask password when it's required, for that show the modal -->
-	<form method="post" class="needs-validation" novalidate>
-		<p class="text-center h2">You Will Join A Channel As <b><i>'{{username}}'</i></b></p>
+	{% block content %}
+	<div class="border-2 d-flex flex-column px-5 ms-5 me-5 my-auto rounded-4 shadow-lg border-primary border">
+		<form method="post" class="needs-validation" novalidate>
+			<p class="text-center fw-bold mt-5 mb-3 h1"><b>YOU WILL JOIN A CHANNEL AS </b><b><i>'{{username}}'</i></b></p>
+			<div class="d-flex">
+				<div>
+					<label class="form-label me-2 mt-2 fw-semibold" for="channel-name">ENTER CHANNEL NAME</label>
+					<div class="form-floating mb-3">
+						<input type="text" maxlength="50" class="border-2 rounded-3 form-control shadow-sm" style="width:450px;" placeholder="ENTER THE CHANNEL NAME" value ="{{channel_name}}" name="channel-name" required/>
+						<div class="invalid-feedback">PLEASE FILL OUT THIS FIELD.</div>
+						<label for="channel-name">CHANNEL NAME</label>
+					</div>
+					<label class="form-label mt-2 fw-semibold" for="passwordInput">ENTER PASSWORD</label>
+					<div class="input-group">
+						<input type="text" class="border-2 form-control shadow-sm rounded-3 me-2" maxlength="30" style="" placeholder="PASSWORD" id="passwordInput" name="passwordInput" required/>
+						<button class="border-2 btn rounded-3 shadow-sm btn-outline-secondary" style="" type="button" id="togglePassword">SHOW</button>
+						<div class="invalid-feedback">Please fill out this field.</div>
+					</div>
+				</div>
+				<div class="d-flex flex-column ms-3 flex-fill">
+				<label class="form-label mt-2 fw-semibold" for="channel-description">ENTER CHANNEL DESCRIPTION</label>
+				<div class="form-floating flex-fill">
+					<textarea class="form-control shadow-sm" style="resize:none;height:100%;" id="channel-description" name="channel-description" placeholder="">{{channel_description}}</textarea>
+					<div class="invalid-feedback">PLEASE FILL OUT THIS FIELD.</div>
+					<label for="channel-description">CHANNEL DESCRIPTION</label>
+				</div> 
+				</div>
+			</div>
 
-  <div class="form-floating mb-3 mt-3">
-	<input type="text" name="channel-id" class="form-control" value="{{channel_id}}" placeholder="Enter the channel ID of length 5" maxlength="5" required/>
-	    <div class="invalid-feedback">Please fill out this field.</div>
-	<label for="channel-id">CHANNEL ID</label>
-		</div>
-
-  <div class="form-floating mb-3 mt-3">
-	<input type="text" name="channel-name" class="form-control" value="{{channel_name}}" placeholder="Enter the channel name" required/>
-	    <div class="invalid-feedback">Please fill out this field.</div>
-	<label for="channel-name">CHANNEL NAME</label>
-		</div>
-
- <div class="form-floating mb-3 mt-3">
-	<textarea class="form-control w-80 h-100" rows="4" id="channel-description" name="channel-description" placeholder="">{{channel_description}}</textarea>
-	    <div class="invalid-feedback">Please fill out this field.</div>
-  <label for="channel-description">CHANNEL DESCRIPTION</label>
-</div> 
-
- <div class="input-group mb-3 mt-3">
-  <input type="text" class="form-control" placeholder="Enter Password" id="passwordInput" name="passwordInput" required>
-  <button class="btn btn-outline-secondary" type="button" id="togglePassword">SHOW</button>
-  </div>
-	<button type="submit" class="btn btn-outline-primary d-block mx-auto mt-4" value="create" name="action">CREATE</button>
-</form>
-{% if error is defined %}
-	<div style="text-align:center;" id="errorAlert" class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
-		<strong>{{error}}</strong>	
-		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+			<div class="d-flex justify-content-center mt-3 mb-4">
+				<button style="" type="submit" class="border-2 shadow-sm btn btn-outline-primary fw-bold btn-lg" value="create" name="action"><b>CREATE</b></button>
+			</div>
+		</form>
 	</div>
-{% endif %}
-
-<script>
-	// Example starter JavaScript for disabling form submissions if there are invalid fields
-	(function () {
-	  'use strict'
-
-	  // Fetch all the forms we want to apply custom Bootstrap validation styles to
-	  var forms = document.querySelectorAll('.needs-validation')
-
-	  // Loop over them and prevent submission
-	  Array.prototype.slice.call(forms)
-	    .forEach(function (form) {
-	      form.addEventListener('submit', function (event) {
-		if (!form.checkValidity()) {
-		  event.preventDefault()
-		  event.stopPropagation()
-		}
-
-		form.classList.add('was-validated')
-	      }, false)
-	    })
-	})()
-
-	const togglePassword = document.getElementById("togglePassword");
-	const passwordInput = document.getElementById("passwordInput");
-	togglePassword.addEventListener("click", togglePass);
-	function togglePass(){
-		const isPassword = passwordInput.type === "password";
-		passwordInput.type = isPassword ? "text" : "password";
-		togglePassword.textContent = isPassword ? "HIDE" : "SHOW";
-	}
-	togglePass();
-
-	
-	setTimeout(() => {
-		const alert = document.getElementById('errorAlert');
-		if(alert){
-			const bsAlert = new bootstrap.Alert(alert);
-			bsAlert.close();
-		}
-	}, 2000);
-
-	//hide the channel button
-	const channel_button = document.getElementById('channel-settings');
-	channel_button.style.display = 'none';
-</script>
-{% endblock %}
+	{% endblock %}

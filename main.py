@@ -3,6 +3,7 @@ from flask_socketio import join_room, leave_room,  SocketIO
 from datetime import datetime
 import random
 import sqlite3
+import os
 from urllib.parse import urlparse
 from string import hexdigits
 
@@ -11,9 +12,10 @@ class IRCApp:
     def __init__(self):
         self.app = Flask(__name__)
         self.DATABASE = "database.db"
+        self.UPLOAD_FOLDER = 'uploads'
+        os.makedirs(self.UPLOAD_FOLDER, exist_ok=True)
         self.app.config["SECRET_KEY"] = "itsasecret"
         self.socketio = SocketIO(self.app)
-        self.channels = {}
         self._configure_routes()
         with self.app.app_context():
             self.init_db()
@@ -114,11 +116,12 @@ class IRCApp:
                     cursor.execute(query)
                     db.commit()
                     #return redirect(url_for("welcome_screen"))
-                    return render_template("login.html", username = username, success = "You have registered successfully, use the credentials to login")
+                    return render_template("login.html", username = username, success = "You have registered successfully, use your credentials to login")
                 elif action == "login":
                     query = f'SELECT * from user WHERE username = "{username}" and password = "{password}";'
                     cursor.execute(query)
                     row = cursor.fetchall()
+
                     #the user is present
                     if len(row) != 0:
                         #set the session varaibles
@@ -126,12 +129,11 @@ class IRCApp:
                         session['username'] = row[0][1]
                         session['channel_id'] = row[0][2]
                         #if the channel_id is present then redirect to that channel 
-                        if session['channel_id'] != None:
-                            return redirect(url_for("channel"))
+                        if session['channel_id'] != None: return redirect(url_for("channel"))
                         # or redirect to the welcome screen to join or create a channel
                         return redirect(url_for("welcome_screen"))
                     #return the user for entering wrong password
-                    return render_template('login.html', username=username, error = 'Username or Password is incorrect')
+                    return render_template('login.html', username=username, error = 'Username or Password is INCORRECT')
                 else:
                     print("Some abnormal submit action has got from login page:", action)
                     return render_template('login.html', username=username)
@@ -156,7 +158,7 @@ class IRCApp:
         def update_channel():
             if not self.check_session() and "channel_id" in session and request.form.get('action') == 'updateChannel' and urlparse(request.referrer).path == "/channel":
                 channel_name = request.form.get('channelNameOfModal') 
-                channel_password = request.form.get('passwordOfChannelModal') 
+                channel_password = request.form.get('passwordInput') 
                 channel_description = request.form.get('channelDescription') 
                 if channel_name not in ['', None] and channel_password not in ['', None]:
                     query = f'UPDATE channel SET channel_name = "{channel_name}", password = "{channel_password}", channel_description = "{channel_description}" WHERE channel_id = "{session['channel_id']}";'
@@ -170,7 +172,7 @@ class IRCApp:
         def update_user():
             if not self.check_session() and request.method == "POST" and request.form.get('action') == 'updateUser' and urlparse(request.referrer).path == "/":
                 username = request.form.get('usernameOfModal') 
-                user_password = request.form.get('passwordOfModal') 
+                user_password = request.form.get('passwordInput') 
                 if username not in ['', None] and user_password not in ['', None]:
                     cursor = self.get_db().cursor()
                     #check if the username is already taken
@@ -187,7 +189,7 @@ class IRCApp:
         @self.app.route("/leave_channel")
         def leave_channel():
             if not self.check_session() and "channel_id" in session and urlparse(request.referrer).path == "/channel":
-                self.get_db().executescript(f'UPDATE user SET channel_id = NULL, user_type = "NORMAL" WHERE user_id = "{session['user_id']}" and username = "{session['username']}";UPDATE channel SET number_of_members = number_of_members - 1 WHERE channel_id = "{session['channel_id']}";')
+                self.get_db().executescript(f'UPDATE user SET channel_id = NULL, user_type = "NORMAL" WHERE user_id = "{session['user_id']}" and username = "{session['username']}";')
                 self.get_db().commit()
                 self.socketio.emit("new_message", {"message_type": "broadcast", "content": f"{session['username']} [ {session['user_id']} ] has left the channel"}, to=session['channel_id'])
                 session.pop('channel_id', None)
@@ -228,7 +230,7 @@ class IRCApp:
         def logout():
             if not self.check_session() and urlparse(request.referrer).path == "/":
                 if 'channel_id' in session:
-                    self.get_db().executescript(f'UPDATE user SET channel_id = NULL, user_type = "NORMAL" WHERE user_id = "{session['user_id']}" and username = "{session['username']}";UPDATE channel SET number_of_members = number_of_members - 1 WHERE channel_id = "{session['channel_id']}";')
+                    self.get_db().executescript(f'UPDATE user SET channel_id = NULL, user_type = "NORMAL" WHERE user_id = "{session['user_id']}" and username = "{session['username']}";')
                     self.get_db().commit()
                 session.pop('channel_id', None)
                 session.pop('user_id', None)
@@ -279,10 +281,7 @@ class IRCApp:
 
             cursor.execute(f'SELECT user.username, sender_id, content, timestamp FROM message JOIN user ON user.user_id = message.sender_id WHERE message.channel_id = "{session['channel_id']}" ORDER BY timestamp ASC;')
             messages = cursor.fetchall()
-            if row[0][5] == session['user_id']:
-                return render_template("channel.html", code=session['channel_id'], messages=messages,owner=True)
-            else:
-                return render_template("channel.html", code=session['channel_id'], messages=messages)
+            return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'])
 
 
         @self.app.route('/join', methods = ['GET', 'POST'])
@@ -294,7 +293,6 @@ class IRCApp:
             cursor.execute(f'SELECT * FROM user WHERE user_id = "{session['user_id']}";')
             rows = cursor.fetchall()
             
-            print(session['user_id'], request.method)
             #if user already has a channel id
             if rows[0][2] != None:
                 session['channel_id'] = rows[0][2]
@@ -308,12 +306,12 @@ class IRCApp:
                     rows = cursor.fetchall()
                     #check if the channel is present or not
                     if len(rows) != 1:
-                        return render_template("join_channel.html", error=f"No such Channel or Password is incorrect", channel_id = channel_id)
+                        return render_template("join_channel.html", error=f"No such Channel or Password is incorrect", channel_id = channel_id, username=session['username'])
 
                     #see if the user is owner of the channel then update it's user_type and channel_id
-                    user_type = 'OWNER' if rows[0][5] == session['user_id'] else 'NORMAL'
+                    user_type = 'OWNER' if rows[0][4] == session['user_id'] else 'NORMAL'
 
-                    query = f'UPDATE user SET user_type = "{user_type}", channel_id = "{channel_id}" WHERE user_id = "{session['user_id']}";UPDATE channel SET number_of_members = number_of_members + 1 WHERE channel_id = "{channel_id}";'
+                    query = f'UPDATE user SET user_type = "{user_type}", channel_id = "{channel_id}" WHERE user_id = "{session['user_id']}";'
                     self.get_db().executescript(query)
                     self.get_db().commit()
 
@@ -341,7 +339,7 @@ class IRCApp:
                 action = request.form.get("action", False)
                 if action == "create":
                     #get channel id, channel name, password and description as provided
-                    channel_id = request.form.get("channel-id")
+                    channel_id = self.generate_unique_code(5, "channel_id");
                     channel_password = request.form.get("passwordInput")
                     channel_name = request.form.get("channel-name")
                     channel_description = request.form.get("channel-description")
@@ -351,20 +349,19 @@ class IRCApp:
                         return render_template("create_channel.html", error="Password is NOT provided")
 
                     #check if the id is repeated
-                    db =  self.get_db()
-                    cursor= db.cursor()
-                    cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{channel_id}";')
-                    if len(cursor.fetchall()) > 0:
-                        return render_template("create_channel.html", channel_id=channel_id, channel_name=channel_name, channel_description=channel_description, username=session['username'],error=f"A Channel with the ID: {channel_id} already exists")
+                    #db =  self.get_db()
+                    #cursor= db.cursor()
+                    #cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{channel_id}";')
+                    #if len(cursor.fetchall()) > 0:
+                    #    return render_template("create_channel.html", channel_id=channel_id, channel_name=channel_name, channel_description=channel_description, username=session['username'],error=f"A Channel with the ID: {channel_id} already exists")
 
+                    db =  self.get_db()
                     #query for inserting the channel details in the channel table and updating user details
-                    query = f'INSERT INTO channel ( channel_id, channel_name, channel_description, password, number_of_members, owner_id ) VALUES ("{channel_id}", "{channel_name}", "{channel_description}", "{channel_password}", 1, "{session['user_id']}");UPDATE user SET user_type = "OWNER", channel_id = "{channel_id}" WHERE user_id = "{session['user_id']}";'
-                    db.executescript(query)
+                    query = f'INSERT INTO channel ( channel_id, channel_name, channel_description, password, owner_id ) VALUES ("{channel_id}", "{channel_name}", "{channel_description}", "{channel_password}", "{session['user_id']}");'
+                    db.execute(query)
                     db.commit()
                     
-                    session["channel_id"] = channel_id
-                    #redirect to the channel
-                    return redirect(url_for('channel'))
+                    return render_template("create_channel.html", username=session["username"], success = f"Channel ID of newly created channel is: '{channel_id}' - SAVE THIS CODE TO ACCESS THE CHANNEL")
 
             return render_template("create_channel.html", username=session["username"])
  
@@ -410,7 +407,6 @@ class IRCApp:
             user_id = session["user_id"]
             if not channel_id or not username or not user_id:
                 return
-
             cursor = self.get_db().cursor()
             cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{channel_id}";')
 
@@ -419,29 +415,11 @@ class IRCApp:
                 return
             join_room(channel_id)
 
-            #sending message to the channel and in terminal to notify the user is online
-            #self.socketio.emit("new_message", {"message_type": "broadcast", "content": f"{username} [ {user_id} ] has joined the channel"}, to=channel_id)
-
-            print(f"{username} is online at {channel}")
-
 
         @self.socketio.on("disconnect")
         def disconnect():
-            db = self.get_db()
-            cursor = db.cursor()
-
             channel_id = session['channel_id']
-            username = session['username']
             leave_room(channel_id)
-
-            #subtract a member from the channel and check if the channel has 0 members, then delete it, delete all of it's messages and update it's users
-            query = f'UPDATE channel SET number_of_members = number_of_members - 1 WHERE channel_id = "{channel_id}";'
-            cursor.execute(query)
-            db.commit()
-
-            #send the message to the channels that user has left the channel
-            #self.socketio.emit("new_message", {"message_type": "broadcast", "content": f"{username} [ {session['user_id']} ] has left the channel"}, to=channel_id)
-            print(f'{username} went offline from {channel_id}')
 
 if __name__ == '__main__':
     app = IRCApp()

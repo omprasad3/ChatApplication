@@ -1,68 +1,24 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<form method="post" class="needs-validation" novalidate>
-	<p class="text-center h1 mt-5 mp-2">You Will Join A Channel As <b><i>'{{username}}'</i></b></p>
-  <div class="form-floating mb-3 mt-3">
-	<input type="text" class="form-control" placeholder="Enter Channel ID" value ="{{channel_id}}" name="channel-ID" required/>
-	    <div class="invalid-feedback">Please fill out this field.</div>
-	<label for="channel-ID">CHANNEL ID</label>
-  </div>
- <div class="input-group mb-3 mt-3">
-  <input type="text" class="form-control" placeholder="Enter Password" id="passwordInput" name="passwordInput">
-  <button class="btn btn-outline-secondary" type="button" id="togglePassword">SHOW</button>
-  </div>
- <button type="submit" class="btn btn-outline-primary d-block mx-auto" name="join">JOIN</button>
-</form> 
-{% if error is defined %}
-	<div style="text-align:center;" id="errorAlert" class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
-		<strong>{{error}}</strong>	
-		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	{% block content %}
+	<div class="border-2 border-primary border d-flex flex-column px-5 mx-auto pt-4 my-auto rounded-4 shadow-lg">
+		<form method="post" class="needs-validation" novalidate>
+			<p class="text-center h1 mb-5 fw-bold"><b>YOU WILL JOIN A CHANNEL AS <b><i>'{{username}}'</i></b></b></p>
+			<label class="form-label me-2 mt-2 fw-semibold" for="channel-ID">ENTER USERNAME</label>
+			<div class="form-floating mb-3">
+				<input type="text" maxlength="30" class="rounded-3 border-2 form-control shadow-sm" style="" placeholder="ENTER CHANNEL ID" value ="{{channel_id}}" name="channel-ID" required/>
+				<div class="invalid-feedback">PLEASE FILL OUT THIS FIELD.</div>
+				<label for="channel-ID">CHANNEL ID</label>
+			</div>
+			<label class="form-label me-2 mt-2 fw-semibold" for="passwordInput">ENTER PASSWORD</label>
+			<div class="input-group mb-3">
+				<input type="text" maxlength="30" class="border-2 form-control shadow-sm rounded-3 me-2" style="resize:none;" maxlength="30" placeholder="PASSWORD" id="passwordInput" name="passwordInput" required/>
+				<button class="btn rounded-3 shadow-sm border-2 btn-outline-secondary" style="" type="button" id="togglePassword">SHOW</button>
+				<div class="invalid-feedback">PLEASE FILL OUT THIS FIELD.</div>
+			</div>
+			<div class="d-flex justify-content-center pb-4">
+				<button type="submit" class="border-2 fw-bold btn rounded-3 shadow-sm btn-outline-primary btn-lg" style="" name="join"><b>JOIN</b></button>
+			</div>
+		</form> 
 	</div>
-{% endif %}
-
-<script>
-	// Example starter JavaScript for disabling form submissions if there are invalid fields
-	(function () {
-	  'use strict'
-
-	  // Fetch all the forms we want to apply custom Bootstrap validation styles to
-	  var forms = document.querySelectorAll('.needs-validation')
-
-	  // Loop over them and prevent submission
-	  Array.prototype.slice.call(forms)
-	    .forEach(function (form) {
-	      form.addEventListener('submit', function (event) {
-		if (!form.checkValidity()) {
-		  event.preventDefault()
-		  event.stopPropagation()
-		}
-
-		form.classList.add('was-validated')
-	      }, false)
-	    })
-	})()
-
-	const togglePassword = document.getElementById("togglePassword");
-	const passwordInput = document.getElementById("passwordInput");
-	togglePassword.addEventListener("click", togglePass);
-	function togglePass(){
-		const isPassword = passwordInput.type === "password";
-		passwordInput.type = isPassword ? "text" : "password";
-		togglePassword.textContent = isPassword ? "HIDE" : "SHOW";
-	}
-	togglePass();
-
-	setTimeout(() => {
-		const alert = document.getElementById('errorAlert');
-		if(alert){
-			const bsAlert = new bootstrap.Alert(alert);
-			bsAlert.close();
-		}
-	}, 2000);
-
-	//hide the channel button
-	const channel_button = document.getElementById('channel-settings');
-	channel_button.style.display = 'none';
-</script>
-{% endblock %}
+	{% endblock %}
