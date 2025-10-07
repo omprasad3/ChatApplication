@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, redirect, url_for, g
+from flask import Flask, render_template, request, session, redirect, url_for, g, send_from_directory
 from flask_socketio import join_room, leave_room,  SocketIO
 from datetime import datetime
 import random
@@ -141,6 +141,10 @@ class IRCApp:
             return render_template('login.html')
 
 
+        @self.app.route('/uploads/<filename>')
+        def uploaded_file(filename):
+            return send_from_directory('uploads', filename)
+
         @self.app.route("/delete_channel")
         def delete_channel():
             if not self.check_session() and "channel_id" in session and urlparse(request.referrer).path == "/channel":
@@ -265,24 +269,54 @@ class IRCApp:
                 return render_template('welcome.html', username=session['username'], info = request.args.get('info'))
             return render_template('welcome.html', username=session['username'])
 
-        @self.app.route("/channel")
+        @self.app.route("/channel", methods=['GET', 'POST'])
         def channel():
             if self.check_session():
                 return redirect(url_for("login"))
 
-            db = self.get_db()
-            cursor = db.cursor()
-            cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{session['channel_id']}";')
-            row = cursor.fetchall()
-            
-            if len(row) == 0:
-                print(f"No such channel: {session['channel_id']}")
-                return redirect(url_for("welcome_screen"))
+            if request.method == "GET":
+                db = self.get_db()
+                cursor = db.cursor()
+                cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{session['channel_id']}";')
+                row = cursor.fetchall()
+                
+                if len(row) == 0:
+                    print(f"No such channel: {session['channel_id']}")
+                    return redirect(url_for("welcome_screen"))
 
-            cursor.execute(f'SELECT user.username, sender_id, content, timestamp FROM message JOIN user ON user.user_id = message.sender_id WHERE message.channel_id = "{session['channel_id']}" ORDER BY timestamp ASC;')
-            messages = cursor.fetchall()
-            return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'])
+                cursor.execute(f'SELECT user.username, sender_id, content, timestamp,message_type FROM message JOIN user ON user.user_id = message.sender_id WHERE message.channel_id = "{session['channel_id']}" ORDER BY timestamp ASC;')
+                messages = cursor.fetchall()
+                return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'])
+            elif request.method == "POST":
+                db = self.get_db()
+                cursor = db.cursor()
+                cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{session['channel_id']}";')
+                row = cursor.fetchall()
+                if len(row) == 0:
+                    print(f"No such channel: {session['channel_id']}")
+                    session.pop("channel_id")
+                    return redirect(url_for("welcome_screen"))
 
+                cursor.execute(f'SELECT user.username, sender_id, content, timestamp, message_type FROM message JOIN user ON user.user_id = message.sender_id WHERE message.channel_id = "{session['channel_id']}" ORDER BY timestamp ASC;')
+                messages = cursor.fetchall()
+
+                #from here
+                image = request.files['image']
+                if not image:
+                    print("An error occured; image not sent")
+                    return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'], error="No image file provided")
+                path = os.path.join(self.UPLOAD_FOLDER, image.filename)
+                image.save(path)
+
+                self.get_db().execute(f'INSERT INTO message (sender_id, channel_id, content, timestamp, message_type) VALUES ("{session['user_id']}", "{session['channel_id']}", "{path}", "{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}", "i");')
+                self.get_db().commit()
+
+                self.socketio.emit("new_message", {"message_type": "i", "content": path, "user_id": session['user_id'], "username" : session['username'], "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, to=session['channel_id'])
+
+                return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'])
+
+            else:
+                return redirect(url_for('login'))
 
         @self.app.route('/join', methods = ['GET', 'POST'])
         def join():
