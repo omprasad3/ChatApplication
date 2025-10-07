@@ -2,9 +2,9 @@
 
 	{% block content %}
 	<div class="border-2 border-primary border d-flex flex-column px-5 mx-auto pt-4 my-auto rounded-4 shadow-lg">
-		<form method="post" class="needs-validation" novalidate>
+		<form method="post" action="/join" class="needs-validation" novalidate>
 			<p class="text-center h1 mb-5 fw-bold"><b>YOU WILL JOIN A CHANNEL AS <b><i>'{{username}}'</i></b></b></p>
-			<label class="form-label me-2 mt-2 fw-semibold" for="channel-ID">ENTER USERNAME</label>
+			<label class="form-label me-2 mt-2 fw-semibold" for="channel-ID">ENTER CHANNEL ID</label>
 			<div class="form-floating mb-3">
 				<input type="text" maxlength="30" class="rounded-3 border-2 form-control shadow-sm" style="" placeholder="ENTER CHANNEL ID" value ="{{channel_id}}" name="channel-ID" required/>
 				<div class="invalid-feedback">PLEASE FILL OUT THIS FIELD.</div>
@@ -13,11 +13,11 @@
 			<label class="form-label me-2 mt-2 fw-semibold" for="passwordInput">ENTER PASSWORD</label>
 			<div class="input-group mb-3">
 				<input type="text" maxlength="30" class="border-2 form-control shadow-sm rounded-3 me-2" style="resize:none;" maxlength="30" placeholder="PASSWORD" id="passwordInput" name="passwordInput" required/>
-				<button class="btn rounded-3 shadow-sm border-2 btn-outline-secondary" style="" type="button" id="togglePassword">SHOW</button>
+				<button class="btn rounded-3 shadow-sm border-2 btn-secondary" style="" type="button" id="togglePassword">SHOW</button>
 				<div class="invalid-feedback">PLEASE FILL OUT THIS FIELD.</div>
 			</div>
 			<div class="d-flex justify-content-center pb-4">
-				<button type="submit" class="border-2 fw-bold btn rounded-3 shadow-sm btn-outline-primary btn-lg" style="" name="join"><b>JOIN</b></button>
+				<button type="submit" class="border-2 fw-bold btn rounded-3 shadow-sm btn-primary btn-lg" style="" name="join"><b>JOIN</b></button>
 			</div>
 		</form> 
 	</div>

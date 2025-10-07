@@ -2,7 +2,7 @@
 
 	{% block content %}
 	<div class="border-2 d-flex flex-column px-5 ms-5 me-5 my-auto rounded-4 shadow-lg border-primary border">
-		<form method="post" class="needs-validation" novalidate>
+		<form action="/create" method="post" class="needs-validation" novalidate>
 			<p class="text-center fw-bold mt-5 mb-3 h1"><b>YOU WILL JOIN A CHANNEL AS </b><b><i>'{{username}}'</i></b></p>
 			<div class="d-flex">
 				<div>
@@ -15,7 +15,7 @@
 					<label class="form-label mt-2 fw-semibold" for="passwordInput">ENTER PASSWORD</label>
 					<div class="input-group">
 						<input type="text" class="border-2 form-control shadow-sm rounded-3 me-2" maxlength="30" style="" placeholder="PASSWORD" id="passwordInput" name="passwordInput" required/>
-						<button class="border-2 btn rounded-3 shadow-sm btn-outline-secondary" style="" type="button" id="togglePassword">SHOW</button>
+						<button class="border-2 btn rounded-3 shadow-sm btn-secondary" style="" type="button" id="togglePassword">SHOW</button>
 						<div class="invalid-feedback">Please fill out this field.</div>
 					</div>
 				</div>
@@ -30,7 +30,7 @@
 			</div>
 
 			<div class="d-flex justify-content-center mt-3 mb-4">
-				<button style="" type="submit" class="border-2 shadow-sm btn btn-outline-primary fw-bold btn-lg" value="create" name="action"><b>CREATE</b></button>
+				<button style="" type="submit" class="border-2 shadow-sm btn btn-primary fw-bold btn-lg" value="create" name="action"><b>CREATE</b></button>
 			</div>
 		</form>
 	</div>
