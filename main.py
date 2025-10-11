@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, session, redirect, url_for, send_from_directory, g
+from flask import Flask, render_template, request, session, redirect, url_for, send_from_directory
 from flask_socketio import join_room, leave_room,  SocketIO
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import select, update, delete
 from datetime import datetime
-import sqlite3
 from random import choice
 from os import makedirs, path as pth
 from urllib.parse import urlparse
@@ -11,41 +12,66 @@ from string import hexdigits
 class IRCApp:
     def __init__(self):
         self.app = Flask(__name__)
-        self.DATABASE = "database.db"
+        self.app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///database.db"
+        self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        self.db = SQLAlchemy(self.app)
+        db = self.db
+        class Channels(db.Model):
+            __tablename__ = "channels"
+            channel_id = db.Column(db.String(5), primary_key = True)
+            channel_name = db.Column(db.String(20), nullable = False)
+            channel_description = db.Column(db.String(255))
+            password = db.Column(db.String(20), nullable = False)
+            owner_id = db.Column(db.String(10), db.ForeignKey('users.user_id', onupdate="CASCADE", ondelete="CASCADE"), nullable = False)
+
+
+            def __repr__(self):
+                return f'<Channels {self.channel_id}, {self.channel_name}>'
+
+        class Users(db.Model):
+            __tablename__ = "users"
+            user_id = db.Column(db.String(10), primary_key = True)
+            username = db.Column(db.String(10), nullable = False, unique = True)
+            channel_id = db.Column(db.String(5), db.ForeignKey('channels.channel_id', ondelete = "SET NULL"), nullable = True)
+            password = db.Column(db.String(20), nullable = False)
+            user_type = db.Column(db.String(6), nullable = False)
+
+            def __repr__(self):
+                return f'<Users {self.user_id}, {self.username}>'
+
+
+        class Messages(db.Model):
+            __tablename__ = "messages"
+            sender_id = db.Column(db.String(10), db.ForeignKey('users.user_id', onupdate="CASCADE", ondelete="CASCADE"), nullable = False)
+            messsage_id = db.Column(db.Integer, primary_key = True, autoincrement = True)
+            channel_id = db.Column(db.String(5), db.ForeignKey('channels.channel_id', onupdate="CASCADE", ondelete="CASCADE"))
+            timestamp = db.Column(db.DateTime, nullable = False)
+            content = db.Column(db.String(255), nullable = False)
+            message_type = db.Column(db.String(1))
+
+            def __repr__(self):
+                return f'<Messages {self.sender_id}: {self.content}, {self.message_type}>'
+
+        self.Users : type[Users] = Users
+        self.Channels = Channels
+        self.Messages = Messages
+        with self.app.app_context():
+            self.db.create_all()
         self.UPLOAD_FOLDER = 'uploads'
         makedirs(self.UPLOAD_FOLDER, exist_ok=True)
-        self.app.config["SECRET_KEY"] = "itsasecret"
+        self.app.config["SECRET_KEY"] = "a1b2c3d4e5"
         self.socketio = SocketIO(self.app)
         self._configure_routes()
-        with self.app.app_context():
-            self.init_db()
-
-    def get_db(self):
-            if "db" not in g:
-                g.db = sqlite3.connect(self.DATABASE)
-                g.db.row_factory = sqlite3.Row
-                g.db.execute("PRAGMA foreign_keys = ON")
-            return g.db
-
-    def close_db(self):
-            db = g.pop("db", None)
-            if db is not None:
-                db.close()
-
-    def init_db(self):
-            db = self.get_db()
-            with open("schema.sql", "r") as f:
-                db.executescript(f.read())
-            db.commit()
 
     #returns True if the user is not logged in or has no recored in db
     def check_session(self):
         #session check
         if 'user_id' not in session or 'username' not in session or session['user_id'] in [None, ''] or session['username'] in [None, '']:
             return True
-        cursor = self.get_db().cursor()
-        cursor.execute(f'SELECT * FROM user WHERE user_id = "{session['user_id']}" and username = "{session['username']}";')
-        if len(cursor.fetchall()) == 0:
+        with self.app.app_context():
+            stmt = select(self.Users).where(self.Users.user_id == session['user_id'], self.Users.username == session['username'])
+            users = self.db.session.execute(stmt).scalars().all()
+        if len(users) == 0:
             return True
         return False
 
@@ -59,23 +85,24 @@ class IRCApp:
             match type:
                 #for user code
                 case 'user_id':
-                    query = f'SELECT * FROM user where user_id = "{code}";'
+                    stmt = select(self.Users).where(self.Users.user_id == code)
                 #for channel code
                 case 'channel_id':
-                    query = f'SELECT * FROM channel where channel_id = "{code}";'
+                    stmt = select(self.Channels).where(self.Channels.channel_id == code)
                 case _:
                     print("Unknown type of code has been asked for, the type is:", type)
                     return None
-            #get the database's cursor
-            cursor = self.get_db().cursor()
-            cursor.execute(query)
+            with self.app.app_context():
+                query = self.db.session.execute(stmt).scalars().all()
+
             #break and go out only if the random code is unique
-            if len(cursor.fetchall()) == 0:
+            if len(query) == 0:
                 break
         return code
 
     def run(self,host="127.0.0.1", port=5000):
-        self.socketio.run(self.app, debug=True, host=host, port=port)
+        #add debug here if needed
+        self.socketio.run(self.app, host=host, port=port)
 
     def _configure_routes(self):
         #login page
@@ -83,13 +110,22 @@ class IRCApp:
         def login():
             #redirect to welcome if username and user_id is already present
             if "username" in session and "user_id" in session:
-                cursor = self.get_db().cursor()
-                cursor.execute(f'SELECT * FROM user WHERE user_id = "{session['user_id']}" and username = "{session['username']}";')
-                if len(cursor.fetchall()) != 0:
+                with self.app.app_context():
+                    stmt = select(self.Users).where(self.Users.user_id == session['user_id'], self.Users.username == session['username'])
+                    users = self.db.session.execute(stmt).scalars().all()
+                if len(users) != 0:
                     return redirect(url_for("welcome_screen"))
                 session.pop("username", None)
                 session.pop("user_id", None)
 
+            if request.args.get("error"):
+                return render_template('login.html', error = request.args.get('error'))
+
+            if request.args.get("info"):
+                return render_template('login.html', info = request.args.get('info'))
+
+            if request.args.get("success"):
+                return render_template('login.html', success = request.args.get('success'))
 
             if request.method == "POST" and request.form.get("action"):
                 username = request.form.get("username")
@@ -99,37 +135,37 @@ class IRCApp:
                 if password in [None, ''] or username in [None, '']:
                     return render_template("login.html", error = 'EMPTY USERNAME OF PASSWORD')
 
-                db = self.get_db()
-                cursor = db.cursor()
                 if action == "register":
                     #check if the username is already taken or not
-                    query = f'SELECT * from user WHERE username = "{username}";'
-                    cursor.execute(query)
-                    row = cursor.fetchall()
+                    with self.app.app_context():
+                        stmt = select(self.Users).where(self.Users.username == username)
+                        row = self.db.session.execute(stmt).scalars().all()
+
                     #the username is taken
                     if len(row) != 0:
                         return render_template('login.html', error = f'USERNAME "{username}" IS ALREADY TAKEN')
-                        
+
                     #insert the new user in the database
                     user_id = self.generate_unique_code(10, 'user_id')
-                    query = f'INSERT INTO user (user_id, username, password, channel_id, user_type) VALUES ("{user_id}", "{username}", "{password}", NULL, "NORMAL")';
-                    cursor.execute(query)
-                    db.commit()
-                    #return redirect(url_for("welcome_screen"))
+                    with self.app.app_context():
+                        self.db.session.add(self.Users(user_id=user_id, username=username, password=password,channel_id=None,user_type="NORMAL"))#type:ignore
+                        self.db.session.commit()
+
                     return render_template("login.html", username = username, success = "YOU HAVE REGISTERED SUCCESSFULLY, USE YOUR CREDENTIALS TO LOGIN")
                 elif action == "login":
-                    query = f'SELECT * from user WHERE username = "{username}" and password = "{password}";'
-                    cursor.execute(query)
-                    row = cursor.fetchall()
+                    with self.app.app_context():
+                        stmt = select(self.Users).where(self.Users.username == username, self.Users.password == password)
+                        users = self.db.session.execute(stmt).scalars().all()
 
                     #the user is present
-                    if len(row) != 0:
+                    if len(users) != 0:
                         #set the session varaibles
-                        session['user_id'] = row[0][0]
-                        session['username'] = row[0][1]
-                        session['channel_id'] = row[0][2]
+                        session['user_id'] = users[0].user_id
+                        session['username'] = users[0].username
+                        session['channel_id'] = users[0].channel_id
                         #if the channel_id is present then redirect to that channel 
-                        if session['channel_id'] != None: return redirect(url_for("channel"))
+                        if session['channel_id'] != None: 
+                            return redirect(url_for("channel"))
                         # or redirect to the welcome screen to join or create a channel
                         return redirect(url_for("welcome_screen"))
                     #return the user for entering wrong password
@@ -148,10 +184,15 @@ class IRCApp:
         @self.app.route("/delete_channel")
         def delete_channel():
             if not self.check_session() and "channel_id" in session and urlparse(request.referrer).path == "/channel":
-                db = self.get_db()
-                cursor = db.cursor()
-                cursor.executescript(f'UPDATE user SET channel_id = NULL, user_type = "NORMAL" WHERE channel_id = "{session['channel_id']}";DELETE FROM channel WHERE channel_id = "{session['channel_id']}";DELETE FROM message WHERE channel_id = "{session['channel_id']}";')
-                db.commit()
+                with self.app.app_context():
+                    stmt = update(self.Users).where(self.Users.channel_id == session['channel_id']).values(channel_id = None, user_type = "NORMAL")
+                    self.db.session.execute(stmt)
+                    stmt = delete(self.Channels).where(self.Channels.channel_id == session['channel_id'])
+                    self.db.session.execute(stmt)
+                    stmt = delete(self.Messages).where(self.Messages.channel_id == session['channel_id'])
+                    self.db.session.execute(stmt)
+                    self.db.session.commit()
+
                 self.socketio.emit("exit_all", {"channel_id": session['channel_id']}, to=session['channel_id'])
                 session.pop('channel_id', None)
             return redirect(url_for('welcome_screen', info = "CHANNEL DELETED SUCCESSFULLY"))
@@ -165,11 +206,11 @@ class IRCApp:
                 channel_password = request.form.get('passwordInput') 
                 channel_description = request.form.get('channelDescription') 
                 if channel_name not in ['', None] and channel_password not in ['', None]:
-                    query = f'UPDATE channel SET channel_name = "{channel_name}", password = "{channel_password}", channel_description = "{channel_description}" WHERE channel_id = "{session['channel_id']}";'
-                    self.get_db().execute(query)
-                    self.get_db().commit()
+                    with self.app.app_context():
+                        stmt = update(self.Channels).where(self.Channels.channel_id == session['channel_id']).values(channel_name = channel_name, password = channel_password, channel_description = channel_description)
+                        self.db.session.execute(stmt)
+                        self.db.session.commit()
                     self.socketio.emit("new_message", {"content": f"Channel details are updated by {session['username']} [ {session['user_id']} ]", "message_type": "broadcast"}, to=session['channel_id'])
-
             return redirect(url_for("channel"))
 
         @self.app.route("/update_user", methods = ["GET", "POST"])
@@ -178,14 +219,17 @@ class IRCApp:
                 username = request.form.get('usernameOfModal') 
                 user_password = request.form.get('passwordInput') 
                 if username not in ['', None] and user_password not in ['', None]:
-                    cursor = self.get_db().cursor()
                     #check if the username is already taken
-                    cursor.execute(f'SELECT * FROM user WHERE username = "{username}";')
-                    if len(cursor.fetchall()) != 0:
+                    with self.app.app_context():
+                        stmt = select(self.Users).where(self.Users.username == username)
+                        users = self.db.session.execute(stmt).scalars().all()
+
+                    if len(users) != 0:
                         return redirect(url_for("welcome_screen", error = f"USERNAME '{username}' IS ALREADY TAKEN, TRY WITH A DIFFERENT USERNAME"))
-                    query = f'UPDATE user SET username = "{username}", password = "{user_password}" WHERE user_id = "{session['user_id']}";'
-                    self.get_db().execute(query)
-                    self.get_db().commit()
+                    with self.app.app_context():
+                        stmt = update(self.Users).where(self.Users.user_id == session['user_id']).values(username = username, password = user_password)
+                        self.db.session.execute(stmt)
+                        self.db.session.commit()
                     session['username'] = username
 
             return redirect(url_for('welcome_screen', success="USER PROFILE UPDATED SUCCESSFULLY"))
@@ -193,8 +237,11 @@ class IRCApp:
         @self.app.route("/leave_channel")
         def leave_channel():
             if not self.check_session() and "channel_id" in session and urlparse(request.referrer).path == "/channel":
-                self.get_db().executescript(f'UPDATE user SET channel_id = NULL, user_type = "NORMAL" WHERE user_id = "{session['user_id']}" and username = "{session['username']}";')
-                self.get_db().commit()
+                with self.app.app_context():
+                    stmt = update(self.Users).where(self.Users.user_id == session['user_id'], self.Users.username == session['username']).values(channel_id = None, user_type = "NORMAL")
+                    self.db.session.execute(stmt)
+                    self.db.session.commit()
+
                 self.socketio.emit("new_message", {"message_type": "broadcast", "content": f"{session['username']} [ {session['user_id']} ] has left the channel"}, to=session['channel_id'])
                 session.pop('channel_id', None)
 
@@ -206,42 +253,56 @@ class IRCApp:
         def delete_user():
             if not self.check_session() and urlparse(request.referrer).path == "/":
                 #delete the user from the database and remove the session variables and redirect to login page
-                db = self.get_db()
-                cursor = db.cursor()
-                cursor.execute(f'SELECT * FROM user WHERE user_id = "{session['user_id']}" and username = "{session['username']}";')
-                row = cursor.fetchall()
+                with self.app.app_context():
+                    stmt = select(self.Users).where(self.Users.username == session['username'], self.Users.user_id == session['user_id'])
+                    users = self.db.session.execute(stmt).scalars().all()
 
-                if len(row) != 0:
-                    cursor.execute(f"SELECT * FROM channel WHERE owner_id = '{session['user_id']}';")
-                    row = cursor.fetchall()
-                    cursor.execute(f'DELETE FROM user WHERE user_id = "{session['user_id']}" and username = "{session["username"]}";')
-                    db.commit()
+                if len(users) != 0:
+                    with self.app.app_context():
+                        stmt = select(self.Channels).where(self.Channels.owner_id == session['user_id'])
+                        channels = self.db.session.execute(stmt).scalars().all()
+
+                    with self.app.app_context():
+                        stmt = delete(self.Users).where(self.Users.user_id == session['user_id'], self.Users.username == session['username'])
+                        self.db.session.execute(stmt)
+                        self.db.session.commit()
                 else:
                     return redirect(url_for("welcome_screen", error = f"INVALID USER, LOGIN REQUIRED"))
 
-                for channel in row:
-                    self.socketio.emit("exit_all", None, to=channel[0])
-                    cursor.executescript(f'DELETE FROM channel WHERE channel_id = "{channel[0]}";UPDATE user SET channel_id = NULL WHERE channel_id = "{channel[0]}";DELETE FROM message WHERE channel_id = "{channel[0]}";')
-                    db.commit()
+                for channel in channels:
+                    self.socketio.emit("exit_all", None, to=channel.channel_id)
+
+                    with self.app.app_context():
+                        stmt = update(self.Users).where(self.Users.channel_id == channel.channel_id).values(channel_id = None)
+                        self.db.session.execute(stmt)
+                        stmt = delete(self.Channels).where(self.Channels.channel_id == channel.channel_id)
+                        self.db.session.execute(stmt)
+                        stmt = delete(self.Messages).where(self.Messages.channel_id == channel.channel_id)
+                        self.db.session.execute(stmt)
+                        self.db.session.commit()
+
                 session.pop('user_id', None)
                 session.pop('username', None)
                 session.pop('channel_id', None)
                 return redirect(url_for("login", success="USER DELETED SUCCESSFULLY"))
             return redirect(url_for('welcome_screen'))
 
-        
+
         @self.app.route("/logout")
         def logout():
             if not self.check_session() and urlparse(request.referrer).path == "/":
                 if 'channel_id' in session:
-                    self.get_db().executescript(f'UPDATE user SET channel_id = NULL, user_type = "NORMAL" WHERE user_id = "{session['user_id']}" and username = "{session['username']}";')
-                    self.get_db().commit()
+                    with self.app.app_context():
+                        stmt = update(self.Users).where(self.Users.user_id == session['user_id'], self.Users.username == session['username']).values(channel_id = None, user_type = "NORMAL")
+                        self.db.session.execute(stmt)
+                        self.db.session.commit()
+
                 session.pop('channel_id', None)
                 session.pop('user_id', None)
                 session.pop('username', None)
 
             return redirect(url_for('login'))
-           
+
 
         #the welcome screen shows the welcome screen and takes in the name and sets it as the username
         #but if the username is already set then redirect the user to home screen
@@ -251,9 +312,7 @@ class IRCApp:
                 return redirect(url_for("login"))
 
             if request.method == "POST":
-                db = self.get_db()
-                cursor = db.cursor()
-               
+
                 #check if the post action was of join or create and redirect accordingly
                 type_of_action = request.form.get("action")
                 match type_of_action:
@@ -277,45 +336,46 @@ class IRCApp:
                 return redirect(url_for("login"))
 
             if request.method == "GET":
-                db = self.get_db()
-                cursor = db.cursor()
-                cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{session['channel_id']}";')
-                row = cursor.fetchall()
-                
-                if len(row) == 0:
+                with self.app.app_context():
+                    stmt = select(self.Channels).where(self.Channels.channel_id == session['channel_id'])
+                    channels = self.db.session.execute(stmt).scalars().all()
+
+                if len(channels) == 0:
                     print(f"No such channel: {session['channel_id']}")
                     return redirect(url_for("welcome_screen"))
 
-                cursor.execute(f'SELECT user.username, sender_id, content, timestamp,message_type FROM message JOIN user ON user.user_id = message.sender_id WHERE message.channel_id = "{session['channel_id']}" ORDER BY timestamp ASC;')
-                messages = cursor.fetchall()
-                return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'])
+                with self.app.app_context():
+                    stmt = select(self.Users.username, self.Messages.sender_id, self.Messages.content, self.Messages.timestamp, self.Messages.message_type).join(self.Users , self.Users.user_id == self.Messages.sender_id).where(self.Messages.channel_id == session['channel_id']).order_by(self.Messages.timestamp)
+                    messages = self.db.session.execute(stmt).all()
+                return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=channels[0].owner_id, channel_name=channels[0].channel_name, channel_description=channels[0].channel_description, user_id=session['user_id'])
             elif request.method == "POST":
-                db = self.get_db()
-                cursor = db.cursor()
-                cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{session['channel_id']}";')
-                row = cursor.fetchall()
-                if len(row) == 0:
+                with self.app.app_context():
+                    stmt = select(self.Channels).where(self.Channels.channel_id == session['channel_id'])
+                    channels = self.db.session.execute(stmt).scalars().all()
+                if len(channels) == 0:
                     print(f"No such channel: {session['channel_id']}")
                     session.pop("channel_id")
                     return redirect(url_for("welcome_screen"))
 
-                cursor.execute(f'SELECT user.username, sender_id, content, timestamp, message_type FROM message JOIN user ON user.user_id = message.sender_id WHERE message.channel_id = "{session['channel_id']}" ORDER BY timestamp ASC;')
-                messages = cursor.fetchall()
+                with self.app.app_context():
+                    stmt = select(self.Users.username, self.Messages.sender_id, self.Messages.content, self.Messages.timestamp, self.Messages.message_type).join(self.Messages, self.Users.user_id == self.Messages.sender_id).where(self.Messages.channel_id == session['channel_id']).order_by(self.Messages.timestamp)
+                    messages = self.db.session.execute(stmt).all()
+
 
                 #from here
                 image = request.files['image']
                 if not image:
                     print("An error occured; image not sent")
-                    return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'], error="NO IMAGE FILE PROVIDED")
-                path = pth.join(self.UPLOAD_FOLDER, image.filename)
+                    return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=channels[0].owner_id, channel_name=channels[0].channel_name, channel_description=channels[0].channel_description, user_id=session['user_id'], error="NO IMAGE FILE PROVIDED")
+                path = pth.join(self.UPLOAD_FOLDER, image.filename)#type: ignore
                 image.save(path)
+                with self.app.app_context():
+                    self.db.session.add(self.Messages(sender_id=session['user_id'], channel_id=session['channel_id'], content=path,timestamp=datetime.now().replace(microsecond = 0),message_type="i"))#type:ignore
+                    self.db.session.commit()
 
-                self.get_db().execute(f'INSERT INTO message (sender_id, channel_id, content, timestamp, message_type) VALUES ("{session['user_id']}", "{session['channel_id']}", "{path}", "{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}", "i");')
-                self.get_db().commit()
+                self.socketio.emit("new_message", {"message_type": "i", "content": path, "user_id": session['user_id'], "username" : session['username'], "timestamp": f"{datetime.now().replace(microsecond = 0)}"}, to=session['channel_id'])
 
-                self.socketio.emit("new_message", {"message_type": "i", "content": path, "user_id": session['user_id'], "username" : session['username'], "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, to=session['channel_id'])
-
-                return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=row[0][4], channel_name=row[0][1], channel_description=row[0][2], user_id=session['user_id'])
+                return render_template("channel.html", code=session['channel_id'], messages=messages,owner_id=channels[0].owner_id, channel_name=channels[0].channel_name, channel_description=channels[0].channel_description, user_id=session['user_id'])
 
             else:
                 return redirect(url_for('login'))
@@ -325,13 +385,13 @@ class IRCApp:
             if self.check_session():
                 return redirect(url_for("login"))
 
-            cursor = self.get_db().cursor()
-            cursor.execute(f'SELECT * FROM user WHERE user_id = "{session['user_id']}";')
-            rows = cursor.fetchall()
-            
+            with self.app.app_context():
+                stmt = select(self.Users).where(self.Users.user_id == session['user_id'])
+                users = self.db.session.execute(stmt).scalars().all()
+
             #if user already has a channel id
-            if rows[0][2] != None:
-                session['channel_id'] = rows[0][2]
+            if users[0].channel_id != None:
+                session['channel_id'] = users[0].channel_id
                 return redirect(url_for('channel'))
 
             if request.args.get("success"):
@@ -341,35 +401,38 @@ class IRCApp:
                 channel_id = request.form.get("channel-ID", False)
                 #if channel_id is not null
                 if channel_id:
-                    cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{channel_id}" and password = "{request.form.get("passwordInput")}";')
-                    rows = cursor.fetchall()
-                    #check if the channel is present or not
-                    if len(rows) != 1: return render_template("join_channel.html", error=f"NO SUCH CHANNEL, OR PASSWORD IS INCOREECT", channel_id = channel_id, username=session['username'])
-                    #see if the user is owner of the channel then update it's user_type and channel_id
-                    user_type = 'OWNER' if rows[0][4] == session['user_id'] else 'NORMAL'
+                    with self.app.app_context():
+                        stmt = select(self.Channels).where(self.Channels.channel_id == channel_id, self.Channels.password == request.form.get("passwordInput"))
+                        channels = self.db.session.execute(stmt).scalars().all()
 
-                    query = f'UPDATE user SET user_type = "{user_type}", channel_id = "{channel_id}" WHERE user_id = "{session['user_id']}";'
-                    self.get_db().executescript(query)
-                    self.get_db().commit()
+                    #check if the channel is present or not
+                    if len(channels) != 1: return render_template("join_channel.html", error=f"NO SUCH CHANNEL, OR PASSWORD IS INCOREECT", channel_id = channel_id, username=session['username'])
+                    #see if the user is owner of the channel then update it's user_type and channel_id
+                    user_type = 'OWNER' if channels[0].owner_id == session['user_id'] else 'NORMAL'
+
+                    with self.app.app_context():
+                        stmt = update(self.Users).where(self.Users.user_id == session['user_id']).values(user_type = user_type, channel_id = channel_id)
+                        self.db.session.execute(stmt)
+                        self.db.session.commit()
 
                     #set the channel_id for the user and redirect to channel page
                     session["channel_id"] = channel_id
                     self.socketio.emit("new_message", {"message_type": "broadcast", "content": f"{session['username']} [ {session['user_id']} ] has joined the channel"}, to=session['channel_id'])
                     return redirect(url_for("channel"))
             return render_template("join_channel.html", username=session["username"])
-            
+
         @self.app.route('/create', methods = ['GET', 'POST'])
         def create():
             if self.check_session():
                 return redirect(url_for("login"))
 
-            cursor = self.get_db().cursor()
-            cursor.execute(f'SELECT * FROM user WHERE user_id = "{session['user_id']}";')
-            rows = cursor.fetchall()
-            
+            with self.app.app_context():
+                stmt = select(self.Users).where(self.Users.user_id == session['user_id'])
+                channels = self.db.session.execute(stmt).scalars().all()
+
             #if user already has a channel id
-            if rows[0][2] != None:
-                session['channel_id'] = rows[0][2]
+            if channels[0].channel_id != None:
+                session['channel_id'] = channels[0].channel_id
                 return redirect(url_for('channel'))
 
             if request.method == "POST":
@@ -385,33 +448,31 @@ class IRCApp:
                     if request.form.get("passwordInput") in ["",None]:
                         return render_template("create_channel.html", error="PASSWORD IS NOT PROVIDED")
 
-                    db =  self.get_db()
-                    #query for inserting the channel details in the channel table and updating user details
-                    query = f'INSERT INTO channel ( channel_id, channel_name, channel_description, password, owner_id ) VALUES ("{channel_id}", "{channel_name}", "{channel_description}", "{channel_password}", "{session['user_id']}");'
-                    db.execute(query)
-                    db.commit()
-                    
+                    with self.app.app_context():
+                        self.db.session.add(self.Channels(channel_id=channel_id, channel_name=channel_name, channel_description=channel_description,password=channel_password,owner_id=session['user_id']))#type:ignore
+                        self.db.session.commit()
                     return redirect(url_for('join', success = f"CHANNEL ID OF NEWLY CREATED CHANNEL IS: '{channel_id}' - SAVE THIS CODE TO ACCESS THE CHANNEL"))
 
             return render_template("create_channel.html", username=session["username"])
- 
-           
+
+
         @self.socketio.on('send_message')
         def message(data):
             channel_id = session['channel_id'] 
             username = session['username']
 
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            current_time = datetime.now().replace(microsecond = 0)
             content = {
-                    "username": username,
-                    "user_id": session['user_id'],
-                    "content": data["data"],
-                    "timestamp" : current_time
+                "username": username,
+                "user_id": session['user_id'],
+                "content": data["data"],
+                "timestamp" : current_time.strftime("%Y-%m-%d %H:%M:%S")
             }
             self.socketio.emit("new_message", content, to=channel_id)
-            query = f'INSERT INTO message (sender_id, channel_id, content, timestamp) VALUES ("{session['user_id']}", "{channel_id}", "{data['data']}", "{current_time}");'
-            self.get_db().execute(query)
-            self.get_db().commit()
+            with self.app.app_context():
+                self.db.session.add(self.Messages(sender_id=session['user_id'],channel_id=channel_id, content=data['data'], timestamp=current_time))#type:ignore
+                self.db.session.commit()
+
             print(f'{username} said: {data["data"]}')
 
         @self.socketio.on('connect')
@@ -421,10 +482,11 @@ class IRCApp:
             user_id = session["user_id"]
             if not channel_id or not username or not user_id:
                 return
-            cursor = self.get_db().cursor()
-            cursor.execute(f'SELECT * FROM channel WHERE channel_id = "{channel_id}";')
+            with self.app.app_context():
+                stmt = select(self.Channels).where(self.Channels.channel_id == channel_id)
+                channels = self.db.session.execute(stmt).scalars().all()
 
-            if len(cursor.fetchall()) != 1:
+            if len(channels) != 1:
                 leave_room(channel_id)
                 return
             join_room(channel_id)
@@ -437,4 +499,4 @@ class IRCApp:
 
 if __name__ == '__main__':
     app = IRCApp()
-    app.run(host="0.0.0.0", port=5000)
+    app.run()

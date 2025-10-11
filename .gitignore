@@ -1,5 +1,4 @@
 __pycache__
 .venv
-todo.txt
-database.db
-password_svg
+instance
+uploads
